@@ -2,8 +2,8 @@
 Password Strength Checker Script
 
 This script evaluates the strength of a user's password based on several
-criteria, including length, character variety, and whether the password has
-been compromised in known data breaches. It can be run from the command line
+criteria, including length, character variety, sequences, and whether the password
+has been compromised in known data breaches. It can be run from the command line
 with optional arguments.
 
 Usage:
@@ -17,13 +17,13 @@ import argparse
 import hashlib
 import requests
 import re
-import string
-
+from colorama import init, Fore, Style
+init(autoreset=True)
 # length requirement for password to pass the check
 LENGTH_REQUIREMENT = 16
 
 # Maximum score achievable
-MAX_SCORE = 9
+MAX_SCORE = 10
 
 # Common keyboard patterns
 KEYBOARD_PATTERNS = [
@@ -52,42 +52,49 @@ def parse_arguments() -> str | None:
     return args.password
 
 
-def has_sequential_chars(password, sequence_length=4):
+def has_consecutive_letters(password) -> bool:
     """
-    Check if the password contains sequential characters.
+    Check if the password contains three or more consecutive letters.
 
     Args:
         password (str): The password to check.
-        sequence_length (int): The minimum length of the sequence to check for.
 
     Returns:
-        bool: True if a sequence is found, False otherwise.
+        bool: True if consecutive letters are found, False otherwise.
     """
-    sequences = [
-        string.ascii_lowercase,
-        string.ascii_uppercase,
-        string.digits,
-    ]
-
-    # Check for increasing sequences
-    for seq in sequences:
-        for i in range(len(seq) - sequence_length + 1):
-            sub_seq = seq[i:i + sequence_length]
-            if sub_seq in password:
+    count = 0
+    for char in password:
+        if char.isalpha():
+            count += 1
+            if count >= 3:
                 return True
-
-    # Check for decreasing sequences
-    for seq in sequences:
-        reversed_seq = seq[::-1]
-        for i in range(len(reversed_seq) - sequence_length + 1):
-            sub_seq = reversed_seq[i:i + sequence_length]
-            if sub_seq in password:
-                return True
-
+        else:
+            count = 0
     return False
 
 
-def has_keyboard_pattern(password):
+def has_consecutive_numbers(password) -> bool:
+    """
+    Check if the password contains three or more consecutive numbers.
+
+    Args:
+        password (str): The password to check.
+
+    Returns:
+        bool: True if consecutive numbers are found, False otherwise.
+    """
+    count = 0
+    for char in password:
+        if char.isdigit():
+            count += 1
+            if count >= 3:
+                return True
+        else:
+            count = 0
+    return False
+
+
+def has_keyboard_pattern(password) -> bool:
     """
     Check if the password contains common keyboard patterns.
 
@@ -104,7 +111,7 @@ def has_keyboard_pattern(password):
     return False
 
 
-def has_repeated_substring(password):
+def has_repeated_substring(password) -> bool:
     """
     Check if the password contains repeated substrings.
 
@@ -122,7 +129,7 @@ def has_repeated_substring(password):
     return False
 
 
-def check_strength(password):
+def check_strength(password) -> tuple[int, list[str]]:
     """
     Evaluate the strength of the given password.
 
@@ -189,10 +196,18 @@ def check_strength(password):
     else:
         score += 1
 
-    # Sequential characters check
-    if has_sequential_chars(password):
+        # Consecutive letters check
+    if has_consecutive_letters(password):
         recommendations.append(
-            "Avoid using sequential letters or numbers."
+            "Avoid using three or more consecutive letters."
+        )
+    else:
+        score += 1
+
+        # Consecutive numbers check
+    if has_consecutive_numbers(password):
+        recommendations.append(
+            "Avoid using three or more consecutive numbers."
         )
     else:
         score += 1
@@ -273,9 +288,11 @@ def main():
     recommendations.extend(strength_recommendations)
 
     # Leaked Password Check
+    password_leaked = False
     try:
         leak_count = check_password_leak(password)
         if leak_count:
+            password_leaked = True
             recommendations.append(
                 f"Your password has been found {leak_count} times "
                 "in data breaches. Avoid using compromised passwords."
@@ -288,14 +305,24 @@ def main():
         )
 
     # Final Output
-    print(f"\nPassword Score: {score}/{MAX_SCORE}")
-    if recommendations:
-        print("Recommendations:")
-        for rec in recommendations:
-            print(f"- {rec}")
+    if score >= 7:
+        print(Fore.GREEN + f"\nPassword Score: {score}/{MAX_SCORE}")
+    elif score >= 4:
+        print(Fore.YELLOW + f"\nPassword Score: {score}/{MAX_SCORE}")
     else:
-        print("Your password is strong!")
+        print(Fore.RED + f"\nPassword Score: {score}/{MAX_SCORE}")
 
+    if recommendations:
+        # Print recommendations with appropriate colors
+        print(Fore.YELLOW + "Recommendations:")
+        for rec in recommendations:
+            if "data breaches" in rec:
+                # Highlight leak warning in red
+                print(Fore.RED + f"- {rec}")
+            else:
+                print(Fore.YELLOW + f"- {rec}")
+    else:
+        print(Fore.GREEN + "Your password is strong!")
 
 if __name__ == '__main__':
     main()
