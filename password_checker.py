@@ -18,12 +18,14 @@ import hashlib
 import requests
 import re
 from colorama import init, Fore, Style
+import getpass
+
 init(autoreset=True)
 # length requirement for password to pass the check
-LENGTH_REQUIREMENT = 16
+LENGTH_REQUIREMENT = 12
 
 # Maximum score achievable
-MAX_SCORE = 10
+MAX_SCORE = 7
 
 # Common keyboard patterns
 KEYBOARD_PATTERNS = [
@@ -146,85 +148,40 @@ def check_strength(password) -> tuple[int, list[str]]:
     score = 0
     recommendations = []
 
-    # Check password length (minimum 12 characters)
-    if len(password) < 12:
-        recommendations.append(
-            "Please use a password at least 12 characters long."
-        )
+    # Check password length
+    if len(password) < LENGTH_REQUIREMENT:
+        recommendations.append(f"Please use a password at least {LENGTH_REQUIREMENT} characters long.")
     else:
         score += 1
 
-    # If the password is too short and lacks other attributes
-    if len(password) < 12 and not any([
-        any(char.isupper() for char in password),
-        any(char.islower() for char in password),
-        any(char.isdigit() for char in password),
-        re.search(r'[!@#$%^&*(),.?":{}|<>]', password)
-    ]):
-        # Only length recommendation is needed
-        return score, recommendations
-
     # Uppercase letter check
     if not any(char.isupper() for char in password):
-        recommendations.append(
-            "Include at least one uppercase letter."
-        )
+        recommendations.append("Include at least one uppercase letter.")
     else:
         score += 1
 
     # Lowercase letter check
     if not any(char.islower() for char in password):
-        recommendations.append(
-            "Include at least one lowercase letter."
-        )
+        recommendations.append("Include at least one lowercase letter.")
     else:
         score += 1
 
     # Digit check
     if not any(char.isdigit() for char in password):
-        recommendations.append(
-            "Include at least one number."
-        )
+        recommendations.append("Include at least one number.")
     else:
         score += 1
 
     # Special character check
     if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
-        recommendations.append(
-            "Include at least one special character."
-        )
+        recommendations.append("Include at least one special character.")
     else:
         score += 1
 
-        # Consecutive letters check
-    if has_consecutive_letters(password):
-        recommendations.append(
-            "Avoid using three or more consecutive letters."
-        )
-    else:
-        score += 1
-
-        # Consecutive numbers check
-    if has_consecutive_numbers(password):
-        recommendations.append(
-            "Avoid using three or more consecutive numbers."
-        )
-    else:
-        score += 1
-
-    # Keyboard pattern check
-    if has_keyboard_pattern(password):
-        recommendations.append(
-            "Avoid using common keyboard patterns."
-        )
-    else:
-        score += 1
-
-    # Repeated substring check
-    if has_repeated_substring(password):
-        recommendations.append(
-            "Avoid using repeated words or patterns."
-        )
+        # Combined check for sequences, keyboard patterns, and repeated substrings
+    if has_consecutive_letters(password) or has_consecutive_numbers(password) or has_keyboard_pattern(
+            password) or has_repeated_substring(password):
+        recommendations.append("Avoid using consecutive letters/numbers, common patterns, or repeated words.")
     else:
         score += 1
 
@@ -276,7 +233,6 @@ def main():
     """
     password = parse_arguments()
     if not password:
-        import getpass
         password = getpass.getpass("Enter your password: ")
 
     score = 0
@@ -293,6 +249,7 @@ def main():
         leak_count = check_password_leak(password)
         if leak_count:
             password_leaked = True
+            score = 0
             recommendations.append(
                 f"Your password has been found {leak_count} times "
                 "in data breaches. Avoid using compromised passwords."
@@ -304,8 +261,7 @@ def main():
             f"An error occurred while checking password leak: {e}"
         )
 
-    # Final Output
-    if score >= 7:
+    if score >= 6:
         print(Fore.GREEN + f"\nPassword Score: {score}/{MAX_SCORE}")
     elif score >= 4:
         print(Fore.YELLOW + f"\nPassword Score: {score}/{MAX_SCORE}")
@@ -323,6 +279,7 @@ def main():
                 print(Fore.YELLOW + f"- {rec}")
     else:
         print(Fore.GREEN + "Your password is strong!")
+
 
 if __name__ == '__main__':
     main()
