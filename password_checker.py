@@ -18,6 +18,8 @@ import hashlib
 import requests
 import re
 
+LENGTH_REQUIREMENT = 16
+
 
 def parse_arguments() -> str | None:
     """
@@ -57,15 +59,15 @@ def check_strength(password) -> tuple[int, list[str]]:
     recommendations = []
 
     # Check password length
-    if len(password) < 8:
+    if len(password) < LENGTH_REQUIREMENT:
         recommendations.append(
-            "Please use a password at least 8 characters long."
+            f"Please use a password at least {LENGTH_REQUIREMENT} characters long."
         )
     else:
         score += 1
 
     # If the password is short and lacks other attributes
-    if len(password) < 8:
+    if len(password) < LENGTH_REQUIREMENT:
         if not any(char.isupper() for char in password) and \
                 not any(char.islower() for char in password) and \
                 not any(char.isdigit() for char in password) and \
