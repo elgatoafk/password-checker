@@ -39,7 +39,7 @@ def parse_arguments() -> str | None:
     return args.password
 
 
-def check_strength(password):
+def check_strength(password) -> tuple[int, list[str]]:
     """
     Evaluate the strength of the given password.
 
@@ -106,3 +106,40 @@ def check_strength(password):
         score += 1
 
     return score, recommendations
+
+
+def check_password_leak(password) -> int:
+    """
+    Check if the password has been compromised in a data breach.
+
+    Uses the Have I Been Pwned API to check if the password exists
+    in known data breaches without compromising user privacy.
+
+    Args:
+        password (str): The password to check.
+
+    Returns:
+        int: The number of times the password was found in data breaches.
+    """
+    # Hash the password using SHA-1
+    sha1pwd = hashlib.sha1(
+        password.encode('utf-8')
+    ).hexdigest().upper()
+    prefix = sha1pwd[:5]
+    suffix = sha1pwd[5:]
+
+    # Query the API with the hash prefix
+    url = f'https://api.pwnedpasswords.com/range/{prefix}'
+    response = requests.get(url, timeout=20)
+    if response.status_code != 200:
+        raise RuntimeError(
+            f'Error fetching data: {response.status_code}'
+        )
+
+    # Check if the hash suffix is in the response
+    hashes = (line.split(':') for line in response.text.splitlines())
+    for h, count in hashes:
+        if h == suffix:
+            return int(count)
+    return 0
+
